@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather App</title>
+
+  <!-- =====================================================================
+       FAVICONS
+       svg  → modern browsers (scalable, supports dark mode)
+       ico  → legacy browsers and OS taskbars (16×16, 32×32, 48×48)
+       ===================================================================== -->
+  <link rel="icon" type="image/svg+xml" href="assets/favicon/favicon.svg" />
+  <link rel="icon" type="image/x-icon"  href="assets/favicon/favicon.ico" sizes="16x16 32x32 48x48" />
+
+  <!-- =====================================================================
+       EXTERNAL DEPENDENCIES (CDN)
+       Load order matters: CSS before JS, Leaflet before our scripts.
+       ===================================================================== -->
+
+  <!-- Tabler Icons — outline icon set used throughout the UI -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+
+  <!-- Leaflet — interactive map in the Map tab -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <!-- =====================================================================
+       #app — root container
+       The bg-* class is swapped dynamically by getBgClass() in constants.js
+       based on the current weather conditions of the displayed city.
+       ===================================================================== -->
+  <div id="app" class="bg-clear">
+
+    <!-- -----------------------------------------------------------------
+         TAB NAVIGATION
+         Three tabs: Weather | Compare | Map
+         The language toggle (EN / IT) is positioned at the far right
+         of the nav bar via margin-left: auto on .lang-toggle.
+         ----------------------------------------------------------------- -->
+    <nav class="nav-tabs" role="tablist" aria-label="App sections">
+
+      <button class="tab-btn active"
+              onclick="switchTab('weather')"
+              role="tab" aria-selected="true" aria-controls="tab-weather">
+        <i class="ti ti-cloud" aria-hidden="true"></i>
+        <span data-i18n="tab_weather">Weather</span>
+      </button>
+
+      <button class="tab-btn"
+              onclick="switchTab('compare')"
+              role="tab" aria-selected="false" aria-controls="tab-compare">
+        <i class="ti ti-columns" aria-hidden="true"></i>
+        <span data-i18n="tab_compare">Compare</span>
+        <span id="badge-compare" class="tab-badge" aria-label="saved cities">0</span>
+      </button>
+
+      <button class="tab-btn"
+              onclick="switchTab('map')"
+              role="tab" aria-selected="false" aria-controls="tab-map">
+        <i class="ti ti-map" aria-hidden="true"></i>
+        <span data-i18n="tab_map">Map</span>
+        <span id="badge-map" class="tab-badge" aria-label="cities on map">0</span>
+      </button>
+
+      <!-- Language toggle — auto-detect on load, manual override saves to localStorage -->
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button class="lang-btn" id="btn-lang-en"
+                onclick="setLang('en')" aria-pressed="false">EN</button>
+        <button class="lang-btn" id="btn-lang-it"
+                onclick="setLang('it')" aria-pressed="false">IT</button>
+      </div>
+
+    </nav>
+
+
+    <!-- =================================================================
+         WEATHER TAB
+         ================================================================= -->
+    <section id="tab-weather" class="tab-panel active"
+             role="tabpanel" aria-labelledby="tab-btn-weather">
+
+      <!-- Search bar, unit toggle, and Save button -->
+      <div class="header">
+        <div class="search-row">
+
+          <!-- City search with autocomplete dropdown -->
+          <div class="search-wrapper">
+            <input type="text"
+                   id="search-input"
+                   placeholder="Search city…"
+                   autocomplete="off"
+                   aria-label="Search city"
+                   aria-autocomplete="list"
+                   aria-controls="suggestions" />
+            <div id="suggestions" role="listbox" aria-label="City suggestions"></div>
+          </div>
+
+          <!-- Search submit -->
+          <button class="icon-btn" onclick="doSearch()"
+                  title="Search" aria-label="Search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+          </button>
+
+          <!-- Geolocation -->
+          <button class="icon-btn" onclick="geoLocate()"
+                  title="Use my location" aria-label="Use my location">
+            <i class="ti ti-current-location" aria-hidden="true"></i>
+          </button>
+
+          <!-- Temperature unit toggle -->
+          <div class="unit-toggle" role="group" aria-label="Temperature unit">
+            <button class="unit-btn active" id="btn-c"
+                    onclick="setUnit('C')" aria-pressed="true">°C</button>
+            <button class="unit-btn" id="btn-f"
+                    onclick="setUnit('F')" aria-pressed="false">°F</button>
+          </div>
+
+          <!-- Save / Saved button (hidden until a city is loaded) -->
+          <button class="icon-btn save-btn" id="save-btn"
+                  onclick="toggleSave()"
+                  style="display:none"
+                  aria-label="Save this city">
+            <i class="ti ti-bookmark" aria-hidden="true"></i> Save
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Dynamic content: welcome → loading → weather data -->
+      <div id="weather-content">
+        <!-- Initial welcome state — replaced by JS on first load -->
+        <div class="state-box">
+          <div class="state-icon">🌤</div>
+          <div class="state-title" data-i18n="welcome_title">Real-time weather</div>
+          <div class="state-sub" data-i18n="welcome_sub">
+            Search a city or use your location.
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- =================================================================
+         COMPARE TAB
+         Entirely populated by renderCompare() in compare-map.js
+         ================================================================= -->
+    <section id="tab-compare" class="tab-panel"
+             role="tabpanel" aria-labelledby="tab-btn-compare">
+
+      <div class="compare-panel">
+        <div id="compare-content">
+          <!-- Initial empty state -->
+          <div class="compare-empty">
+            <div class="compare-empty-icon">🗂</div>
+            <div class="compare-empty-title" data-i18n="compare_empty_title">No saved cities</div>
+            <div class="compare-empty-sub" data-i18n="compare_empty_sub">
+              Search a city in the Weather tab and press Save to add it here.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- =================================================================
+         MAP TAB
+         The Leaflet map is initialised the first time this tab is opened.
+         ================================================================= -->
+    <section id="tab-map" class="tab-panel"
+             role="tabpanel" aria-labelledby="tab-btn-map">
+
+      <div class="map-panel">
+
+        <!-- Map canvas or empty-state message -->
+        <div class="map-container">
+          <div class="map-empty" id="map-empty">
+            <div style="font-size:36px;opacity:.45" aria-hidden="true">🗺</div>
+            <div data-i18n="map_empty">Save cities to see them on the map.</div>
+          </div>
+          <!-- Leaflet mounts here; hidden until at least one city is saved -->
+          <div id="leaflet-map" style="display:none" aria-label="Interactive map"></div>
+        </div>
+
+        <!-- Textual list of saved cities below the map -->
+        <div class="map-saved-list" id="map-saved-list"></div>
+
+      </div>
+
+    </section>
+
+  </div><!-- /#app -->
+
+
+  <!-- ===================================================================
+       EXTERNAL SCRIPTS
+       Leaflet and Chart.js must load before our own JS files.
+       =================================================================== -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <!-- ===================================================================
+       APP SCRIPTS
+       Load order is critical — each file depends on the one(s) before it:
+         i18n.js      → exposes t(), tDay(), setLang(), currentLang
+         api.js       → exposes fetchWeather(), searchCity(), reverseGeocode()
+         constants.js → exposes WMO_ICONS, wmoDesc(), getBgClass(), ALERT_THRESHOLDS
+         weather.js   → core logic; reads from i18n, api, constants
+         compare-map.js → Compare + Map panels; reads from weather + above
+   =================================================================== -->
+  <script src="js/i18n.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/compare-map.js"></script>
+
+  <!-- ===================================================================
+       BOOT
+       Runs after all scripts are loaded.
+       Sets the initial language toggle state and syncs the UI.
+       =================================================================== -->
+  <script>
+    (function boot() {
+      /* Set the correct pressed state on the language buttons */
+      document.getElementById('btn-lang-en').classList.toggle('active', currentLang === 'en');
+      document.getElementById('btn-lang-it').classList.toggle('active', currentLang === 'it');
+
+      /* Apply translations to all static [data-i18n] elements on first load */
+      applyStaticTranslations();
+
+      /* Sync the search placeholder to the detected language */
+      document.getElementById('search-input').placeholder = t('search_placeholder');
+
+      /* Update the html[lang] attribute for accessibility */
+      document.documentElement.lang = currentLang;
+    })();
+  </script>
+
+</body>
+</html>
