@@ -1,188 +1,194 @@
-# Scientific Calculator
+# 🌤 Weather App
 
-A colourful, fully client-side calculator built with pure HTML, CSS, and JavaScript.
-No frameworks, no build step, no external dependencies.
+A full-page, responsive weather application built in vanilla HTML, CSS, and JavaScript. No framework, no build step, no API key required.
+
+---
+
+## Features
+
+| Feature | Details |
+|---|---|
+| **Real-time weather** | Temperature, feels-like, wind, humidity, UV index, precipitation |
+| **Hourly forecast** | Horizontal scrollable strip for the next 24 hours |
+| **7-day forecast** | Icon, description, daily high and low |
+| **Temperature chart** | 7-day max/min curve powered by Chart.js |
+| **Weather alerts** | Automatic warnings for strong wind, storms, frost, high UV, extreme heat |
+| **Clothing advice** | Outfit suggestions based on temperature, rain, UV, and wind |
+| **Dynamic background** | App gradient shifts to match current conditions |
+| **°C / °F + km/h / mph** | Unit conversion applied everywhere in real time |
+| **Save cities** | Bookmark any city to the favourites list |
+| **Compare cities** | Side-by-side cards with warmest/coldest highlighting |
+| **Interactive map** | Leaflet map with temperature markers for every saved city |
+| **Autocomplete search** | Live city suggestions while typing |
+| **Geolocation** | One-tap detection of the user's current position |
+| **Internationalisation** | English / Italian — auto-detected from browser, manually overridable, saved to `localStorage` |
 
 ---
 
 ## Project structure
 
 ```
-/
-├── index.html              # Page markup and button layout
-├── css/
-│   └── style.css           # Lavender palette, colour-coded buttons, orange hover
-├── js/
-│   ├── i18n.js             # Internationalisation module (EN / IT)
-│   └── script.js           # Calculator logic: expression engine, sci functions, history
-├── i18n/
-│   ├── en.json             # English UI strings
-│   └── it.json             # Italian UI strings
+weather-app/
+├── index.html              # HTML shell, script imports, boot snippet
 ├── assets/
 │   └── favicon/
-│       ├── favicon.svg     # Vector favicon (modern browsers)
-│       └── favicon.ico     # Raster ICO — 16×16, 32×32, 48×48 (legacy fallback)
-└── README.md               # This file
+│       ├── favicon.svg     # Scalable favicon (modern browsers)
+│       └── favicon.ico     # Multi-size favicon: 16×16, 32×32, 48×48
+├── css/
+│   └── style.css           # All styles — 15 sections, fully commented
+├── js/
+│   ├── i18n.js             # Translations (EN/IT), language detection, setLang()
+│   ├── api.js              # All external API calls (Open-Meteo, Nominatim)
+│   ├── constants.js        # WMO codes, weather descriptions, alert thresholds
+│   ├── weather.js          # Core logic: search, render, alerts, saved cities
+│   └── compare-map.js      # Compare tab and Map tab (Leaflet)
+└── README.md
 ```
 
----
+### Script load order
 
-## Getting started
+Each file depends on the one(s) loaded before it:
 
-Drop all files into the same folder and open `index.html` in any modern browser.
-
-```bash
-# macOS
-open index.html
-
-# Linux
-xdg-open index.html
-
-# Windows
-start index.html
+```
+i18n.js → api.js → constants.js → weather.js → compare-map.js
 ```
 
-> **Language toggle note**
-> The i18n module fetches locale files via the `fetch` API.
-> Some browsers block filesystem `fetch` requests for security reasons.
-> If the EN / IT toggle does not work, serve the folder over HTTP instead:
->
-> ```bash
-> python3 -m http.server 8080
-> # then visit http://localhost:8080
-> ```
->
-> VS Code users: the **Live Server** extension handles this automatically.
+> **Local file protocol note:** the separate `.js` files require a web server to work correctly — browsers block local script loading over `file://`. Use VS Code Live Server, `python3 -m http.server`, or deploy to any static host (GitHub Pages, Netlify, etc.).
 
 ---
 
-## Features
+## APIs used
 
-### Standard tab
+All services are **free and require no API key**.
 
-Basic four-operation arithmetic with a clean, colour-coded keypad.
+| Service | Purpose | Endpoint |
+|---|---|---|
+| [Open-Meteo](https://open-meteo.com) | Current weather + forecasts | `api.open-meteo.com/v1/forecast` |
+| [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api) | City search by name | `geocoding-api.open-meteo.com/v1/search` |
+| [Nominatim (OSM)](https://nominatim.org) | Reverse geocoding (coordinates → city) | `nominatim.openstreetmap.org/reverse` |
 
-| Key   | Action                     |
-|-------|----------------------------|
-| AC    | Full reset                 |
-| +/−   | Toggle sign of current value |
-| %     | Divide current value by 100 |
-| ÷ × − + | Binary operators        |
-| =     | Evaluate                   |
-
-### Scientific tab
-
-Everything from Standard, plus:
-
-| Button  | Function                                        |
-|---------|-------------------------------------------------|
-| sin( )  | Sine — respects DEG / RAD mode                  |
-| cos( )  | Cosine — respects DEG / RAD mode                |
-| tan( )  | Tangent — respects DEG / RAD mode               |
-| log( )  | Base-10 logarithm                               |
-| ln( )   | Natural logarithm                               |
-| √( )    | Square root                                     |
-| x²      | Square                                          |
-| x³      | Cube                                            |
-| 1/x     | Reciprocal                                      |
-| |x|     | Absolute value                                  |
-| xʸ      | General power — enter base, press xʸ, enter exp |
-| π       | Insert π (3.14159265…)                          |
-| e       | Insert e (2.71828182…)                          |
-| (  )    | Parentheses — group sub-expressions             |
-| DEG/RAD | Toggle angle unit for trig functions            |
-
-Parentheses support full nesting, e.g. `(2 + 3) × (7 − 4) = 15`.
-Pressing `=` with unclosed parentheses auto-closes them before evaluation.
-
-### History tab
-
-Stores the last 30 completed calculations in memory.
-Click any row to reload its result into the display.
-**Clear all** wipes the list.
+All fetch calls are centralised in `js/api.js`. To point the app at a proxy or a different API version, edit the `BASE_URLS` object at the top of that file.
 
 ---
 
-## Internationalisation
+## External libraries (CDN)
 
-Language is resolved in this priority order at startup:
+| Library | Version | Purpose |
+|---|---|---|
+| [Tabler Icons](https://tabler.io/icons) | latest | Outline icon set |
+| [Leaflet](https://leafletjs.com) | 1.9.4 | Interactive map |
+| [Chart.js](https://www.chartjs.org) | 4.4.1 | Temperature chart |
 
-1. **`localStorage` key `calc_lang`** — a language the user explicitly chose in a previous visit.
-2. **`navigator.language`** — the browser or OS locale (`it-IT` → `it`, `en-US` → `en`).
-3. **`en`** — safe fallback.
+All libraries are loaded from CDN — nothing to install.
 
-The toggle button in the top-right corner switches between **EN** and **IT** at any time.
-The choice is written back to `localStorage` so it persists across sessions.
+---
+
+## Internationalisation (i18n)
+
+The app ships with **English** and **Italian** translations defined in `js/i18n.js`.
+
+### How language detection works
+
+1. **On first load** — the browser language (`navigator.language`) is checked. If it starts with `"it"`, Italian is used; otherwise English is the default.
+2. **Manual override** — the `EN / IT` toggle in the top-right corner of the navigation bar lets the user switch at any time.
+3. **Persistence** — the chosen language is saved to `localStorage` under the key `weatherapp_lang` and restored on every subsequent visit.
 
 ### Adding a new language
 
-1. Copy `i18n/en.json` to `i18n/<code>.json` and translate the values.
-2. Add the code string to `SUPPORTED_LANGS` in `js/i18n.js`.
-3. Extend the `toggleLang()` function to cycle through the new locale.
+1. Open `js/i18n.js`.
+2. Add a new language code (e.g. `'fr'`) to every entry in the `TRANSLATIONS` object.
+3. Add the same code to `WMO_DESC_*` objects in `js/constants.js`.
+4. Add a toggle button in `index.html` and update the `setLang()` / `detectInitialLang()` functions in `i18n.js`.
 
 ---
 
-## Keyboard shortcuts
+## How to run
 
-| Key           | Action                          |
-|---------------|---------------------------------|
-| `0` – `9`     | Digit input                     |
-| `.`           | Decimal point                   |
-| `+` `-` `*`   | Add, subtract, multiply         |
-| `/`           | Divide                          |
-| `^`           | Power                           |
-| `(` `)`       | Open / close parenthesis        |
-| `Enter` / `=` | Evaluate                        |
-| `Backspace`   | Delete last character           |
-| `Escape`      | Full reset (same as AC)         |
+### With a local server (recommended)
 
----
+```bash
+# Python — built into macOS and most Linux distros
+python3 -m http.server 8080
 
-## Design reference
+# Node.js
+npx serve .
 
-| Element              | Colour                        |
-|----------------------|-------------------------------|
-| Page background      | `#e9d5ff` lavender            |
-| Card surface         | `#f3e8ff` light lavender      |
-| Display area         | `#ede9fe` mid lavender        |
-| Digit buttons        | `#ffffff` white               |
-| Operators            | `#7c3aed` violet              |
-| Equals               | `#ec4899` pink                |
-| AC / Clear           | `#dc2626` red                 |
-| Utility (+/−, %)     | `#0891b2` teal                |
-| Scientific functions | `#059669` emerald             |
-| Constants (π, e)     | `#d97706` amber               |
-| Parentheses ( )      | `#a855f7` light violet        |
-| Universal hover      | `#f97316` orange              |
+# VS Code — install the Live Server extension, then click "Go Live"
+```
+
+Then open `http://localhost:8080` in your browser.
+
+### Deploy to GitHub Pages
+
+1. Push the project to a GitHub repository.
+2. Go to **Settings → Pages → Source** and select the `main` branch.
+3. The app will be live at `https://<username>.github.io/<repo>/`.
 
 ---
 
-## Implementation notes
+## Customisation
 
-**Expression engine** — instead of the classic `prev / op / current` state machine, the calculator builds a full expression string that is evaluated in one pass using `Function()`. This makes parentheses and operator chaining work naturally without a custom parser.
+### Alert thresholds
 
-**Floating-point rounding** — results are passed through `toPrecision(10)` to suppress noise like `0.1 + 0.2 = 0.30000000000000004`.
+In `js/constants.js`, edit the `ALERT_THRESHOLDS` object to tune when alerts fire:
 
-**i18n loading** — locale files are fetched lazily on first use and cached in memory, so switching languages does not reload the page or re-fetch a file twice.
+```js
+const ALERT_THRESHOLDS = {
+  windStrong:   50,   // km/h — strong wind alert
+  uvHigh:        8,   // UV index — very high
+  heatExtreme:  35,   // °C — extreme heat
+  coldFreezing:  0,   // °C — sub-zero
+  rainChance:   60,   // % — umbrella suggestion threshold
+  // ...
+};
+```
 
----
+### API endpoints
 
-## Known limitations
+In `js/api.js`, edit the `BASE_URLS` object:
 
-- Precision is capped at 10 significant digits (standard JS `Number` behaviour).
-- Calculation history is in-memory only and is lost on page reload.
-- `tan(90°)` returns a very large finite number rather than `Infinity` — a known floating-point artefact.
+```js
+const BASE_URLS = {
+  weather:   'https://api.open-meteo.com/v1/forecast',
+  geocoding: 'https://geocoding-api.open-meteo.com/v1/search',
+  reverse:   'https://nominatim.openstreetmap.org/reverse',
+};
+```
 
 ---
 
 ## Browser compatibility
 
-| Browser | Minimum version |
-|---------|----------------|
-| Chrome  | 90+            |
-| Firefox | 88+            |
-| Safari  | 14+            |
-| Edge    | 90+            |
+| Browser | Support |
+|---|---|
+| Chrome / Edge | ✅ Full |
+| Firefox | ✅ Full |
+| Safari | ✅ Full |
+| Chrome for Android | ✅ Full |
+| Safari for iOS | ✅ Full |
 
-APIs used: CSS Grid, `fetch`, `localStorage`, `navigator.language`, `Function()`.
-No polyfills required.
+Requires: `fetch`, `async/await`, CSS Grid, Geolocation API — all supported by every modern browser.
+
+---
+
+## Changelog
+
+### v2.0.0
+- Full rewrite in English (code, comments, UI strings)
+- Added internationalisation system (`js/i18n.js`): EN/IT, auto-detect, localStorage persistence
+- Restructured into subdirectories: `assets/`, `css/`, `js/`
+- Added SVG favicon and multi-size ICO favicon
+- Language toggle in the navigation bar
+
+### v1.0.0
+- Initial release: real-time weather, hourly + 7-day forecast, Chart.js graph
+- Weather alerts and clothing advice
+- Save cities, Compare tab, interactive Map tab (Leaflet)
+- Dynamic background, °C/°F + km/h/mph toggle
+- Full-page responsive layout
+
+---
+
+## License
+
+Open source — free to modify and distribute.
